@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LLM Viewer</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect x=%222%22 y=%221%22 width=%2212%22 height=%2214%22 rx=%222%22 fill=%22%234cc9f0%22/%3E%3C/svg%3E">
+</head>
+<body>
+<div id="stage"></div>
+
+<header id="top">
+  <div class="brand">LLM<b>VIEWER</b></div>
+  <div id="model">loading model…</div>
+  <div id="status">connecting…</div>
+</header>
+
+<aside id="left" class="panel">
+  <section class="chatsec">
+    <h3>Chat</h3>
+    <div id="chat"></div>
+    <textarea id="input" rows="2" placeholder="Send a message to the model…">What is the capital of France?</textarea>
+    <div class="ctl">
+      <label>max tokens <select id="maxtok"><option>8</option><option>16</option><option selected>32</option><option>64</option><option>128</option></select></label>
+      <label>temp <input id="temp" type="range" min="0" max="1.5" step="0.05" value="0.7"><span id="tempv"></span></label>
+      <button id="send">Send ↵</button>
+    </div>
+  </section>
+  <section>
+    <h3>Tokenization <span id="tokcount" class="dim"></span></h3>
+    <div id="toks" class="dim small">Your message is wrapped in the chat template, then split into sub-word tokens. Each token gets an id.</div>
+  </section>
+  <section><div id="ahead" class="small"></div></section>
+  <section class="about small">
+    <details>
+      <summary>Are these numbers real?</summary>
+      <p>Yes. Each token runs on the GPU (Apple MPS, float32) with PyTorch forward hooks on every sub-operation. The hooks keep the exact tensors the GPU produced and time each kernel with a GPU sync before and after. The browser replays that recording on a scaled clock.</p>
+      <p>Matrices show a 128×128 grid of the actual weights. Vectors show every value (long ones are max-pooled to fit the strip). The 🔬 view fetches a full real weight row and redoes the dot product in float64, then checks it against the GPU's answer.</p>
+      <p>Before recording, the prompt runs once untimed so kernel compilation does not distort the timings. Caveats: syncing after every op makes it slower than normal generation (see the uninstrumented speed at the top). The GPU runs each matmul as thousands of parallel threads; the left-to-right sweep is an ordering for humans. Inside the attention kernel only the softmax weights and the result are captured.</p>
+    </details>
+  </section>
+</aside>
+
+<aside id="right" class="panel">
+  <div id="op"><h2>Waiting for a message</h2><p class="dim">Send a prompt on the left. The model runs on your GPU, records every operation, then plays it back here.</p></div>
+  <h3>Logit lens <span class="dim small">what each layer would predict if it stopped there</span></h3>
+  <div id="lens"></div>
+</aside>
+
+<div id="micro" class="hidden"></div>
+
+<footer id="bar">
+  <div class="row">
+    <button id="restart" title="Restart this token">⏮</button>
+    <button id="play" title="Play / pause (space)">⏸</button>
+    <button id="nextop" title="Next operation (→)">⏭</button>
+    <button id="nexttok" title="Skip to next token (n)">⏭⏭</button>
+    <label class="spd">speed <select id="speed"></select></label>
+    <span id="eta"></span>
+    <span id="clock">idle</span>
+    <span class="grow"></span>
+    <button id="follow" title="Camera follows the computation (f)">🎥 follow</button>
+    <button id="tower" title="Whole-model view (t)">🗼 tower</button>
+    <button id="lblbtn" class="on" title="Toggle 3D labels">🏷 labels</button>
+    <button id="panelbtn" title="Toggle side panels">▤ panels</button>
+  </div>
+  <div class="tlwrap">
+    <canvas id="timeline"></canvas>
+  </div>
+  <div class="legend">
+    <span><i style="background:#b794ff"></i>input/output</span><span><i style="background:#ffd166"></i>RMSNorm</span>
+    <span><i style="background:#4cc9f0"></i>attention</span><span><i style="background:#7ae582"></i>residual add</span>
+    <span><i style="background:#ff5d8f"></i>MLP</span>
+    <span class="grad">value: <i class="neg"></i> negative · <i class="zero"></i> ≈0 · <i class="pos"></i> positive</span>
+    <span class="dim">timeline = real per-op GPU time for this token (click to jump)</span>
+  </div>
+</footer>
+<div id="tltip"></div>
+
+<script type="importmap">{ "imports": { "three": "/static/vendor/three.module.js", "three/addons/": "/static/vendor/jsm/" } }</script>
+<script type="module" src="/static/js/main.js"></script>
+</body>
+</html>
